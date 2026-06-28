@@ -1,0 +1,10 @@
+# Feed XML scaricati da plugins.qgis.org — dati, non codice (vedi README)
+feed/
+
+# File temporanei / OS / editor
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

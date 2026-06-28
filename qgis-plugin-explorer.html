@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QGIS Plugin Explorer — catalogo &amp; controllo duplicati</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#F6F8F3; --surface:#FFFFFF; --surface-2:#EEF2E9;
+    --ink:#16231C; --ink-soft:#4A5A50; --ink-faint:#7C8A80;
+    --line:#DCE4D6; --line-soft:#E8EDE2;
+    --green:#589632; --green-deep:#2E6B3E; --teal:#2E5E4E;
+    --amber:#C8851A; --red:#B23A2E;
+    --shadow:0 1px 2px rgba(22,35,28,.04),0 8px 24px rgba(22,35,28,.06);
+    --font-display:'Space Grotesk',system-ui,-apple-system,Segoe UI,sans-serif;
+    --font-body:'Inter',system-ui,-apple-system,Segoe UI,sans-serif;
+    --font-mono:'Space Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:var(--font-body);font-size:15px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--green-deep);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 22px}
+
+  /* ---------- Header con motivo isoipse ---------- */
+  header.top{position:relative;overflow:hidden;background:var(--ink);color:#EAF1E6}
+  header.top .contours{position:absolute;inset:0;opacity:.16;pointer-events:none}
+  header.top .wrap{position:relative;padding:30px 22px 26px}
+  .brand{display:flex;align-items:center;gap:13px}
+  .brand .mark{width:34px;height:34px;flex:none}
+  .brand h1{font-family:var(--font-display);font-weight:700;font-size:23px;margin:0;letter-spacing:-.4px}
+  .brand .sub{font-family:var(--font-mono);font-size:11px;color:#9FB8A4;margin-top:2px;letter-spacing:.5px;text-transform:uppercase}
+  header.top p.lead{margin:14px 0 0;max-width:640px;color:#BDD0C0;font-size:14.5px}
+
+  /* ---------- Barra sorgente dati ---------- */
+  .source{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+  .source .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 22px}
+  .source label.fld{font-size:12px;color:var(--ink-soft);font-weight:600;display:flex;align-items:center;gap:6px}
+  select,.btn,input[type=text]{font-family:var(--font-body);font-size:14px}
+  select{padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink)}
+  .btn{cursor:pointer;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
+    padding:7px 13px;border-radius:8px;font-weight:600;transition:background .15s,border-color .15s}
+  .btn:hover{background:#E4EBDC}
+  .btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+  .btn.primary:hover{background:var(--green-deep)}
+  .btn:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+  .status{margin-left:auto;font-family:var(--font-mono);font-size:12px;color:var(--ink-faint)}
+  .status b{color:var(--green-deep)}
+  .status.err{color:var(--red)}
+  #fileInput{display:none}
+
+  /* ---------- Hint / curl ---------- */
+  .hint{background:var(--surface-2);border:1px dashed var(--line);border-radius:12px;
+    padding:14px 16px;margin:18px 0;font-size:13.5px;color:var(--ink-soft)}
+  .hint code{font-family:var(--font-mono);background:var(--ink);color:#CFE3C8;padding:2px 7px;border-radius:5px;font-size:12.5px}
+  .hint .cmd{display:flex;align-items:center;gap:10px;margin-top:9px}
+  .hint .cmd code{flex:1;overflow-x:auto;white-space:nowrap;padding:8px 10px}
+
+  section{padding:26px 0}
+  .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--green-deep);font-weight:700}
+  h2.sec{font-family:var(--font-display);font-weight:600;font-size:20px;margin:6px 0 16px;letter-spacing:-.3px}
+  .scope-note{background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--green);
+    border-radius:10px;padding:11px 14px;margin:0 0 18px;font-size:13.5px;color:var(--ink-soft);line-height:1.55}
+  .scope-note strong{color:var(--ink);font-weight:600}
+  .scope-note .flt{color:var(--green-deep);font-weight:600}
+
+  /* ---------- Pannello ricerca (hero azione) ---------- */
+  .search-panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:20px 20px 18px}
+  .search-row{display:flex;gap:10px;align-items:stretch}
+  .search-row input[type=text]{flex:1;padding:13px 15px;border:1.5px solid var(--line);border-radius:11px;
+    font-size:16px;background:var(--bg)}
+  .search-row input[type=text]:focus{border-color:var(--green);background:#fff}
+  .opts{display:flex;flex-wrap:wrap;gap:16px 20px;margin-top:13px;align-items:center}
+  .chk{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-soft);cursor:pointer;user-select:none}
+  .chk input{accent-color:var(--green);width:15px;height:15px}
+  .reg-flag{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint)}
+  .count-line{margin-top:14px;font-size:14px;color:var(--ink-soft)}
+  .count-line b{font-family:var(--font-mono);color:var(--green-deep);font-size:17px}
+
+  /* verifica nome */
+  .name-check{margin-top:14px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px 18px}
+  .nc-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .nc-label{font-weight:600;font-size:14px;color:var(--ink);white-space:nowrap}
+  .nc-row input{flex:1;min-width:200px;padding:9px 13px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;background:var(--bg)}
+  .nc-row input:focus{border-color:var(--green);background:#fff}
+  .nc-result{margin-top:10px;font-size:13.5px;min-height:1px}
+  .nc-result .ok{color:var(--green-deep);font-weight:600}
+  .nc-result .taken{color:var(--red);font-weight:600}
+  .nc-result .sim{color:var(--ink-soft)}
+  .nc-result .simname{display:inline-block;background:var(--surface-2);border:1px solid var(--line);border-radius:20px;padding:1px 9px;margin:3px 4px 0 0;font-size:12px}
+
+  /* toolbar tabella */
+  .tbl-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .tbl-toolbar .tt-info{font-size:12.5px;color:var(--ink-faint);font-family:var(--font-mono)}
+  .tbl-toolbar .tt-show{margin-left:auto;font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:7px}
+  .tbl-toolbar .tt-show select{padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);font-size:13px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+
+  /* età / vitalità */
+  td.upd{white-space:nowrap}
+  .age{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono)}
+  .age::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ink-faint);flex:none}
+  .age.ok::before{background:var(--green)}
+  .age.mid::before{background:var(--amber)}
+  .age.old::before{background:var(--red)}
+  .agelbl{display:block;font-size:11px;color:var(--ink-faint);margin-top:2px}
+  .agelbl.old{color:var(--red)}
+
+  /* correlati per tag */
+  .related{margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:18px}
+  .rel-head{font-family:var(--font-display);font-weight:600;font-size:15px;margin-bottom:14px}
+  .rel-head .rel-sub{display:block;font-family:var(--font-body);font-weight:400;font-size:12px;color:var(--ink-faint);margin-top:3px}
+  .rel-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+  .rel-card{border:1px solid var(--line);border-radius:11px;padding:11px 12px;background:var(--surface-2)}
+  .rel-card .rn{font-weight:600;font-size:13.5px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .rel-card .rn a{font-family:var(--font-mono);font-size:11px;font-weight:400}
+  .rel-card .rt{margin-top:6px}
+  .rel-card .rt .tag.hot{background:#D8F0C4;border-color:#B9E0A0;color:var(--green-deep)}
+
+  /* ---------- KPI ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 16px 14px;box-shadow:var(--shadow)}
+  .kpi .k-label{font-size:12px;color:var(--ink-faint);font-weight:600;display:flex;align-items:center;gap:7px}
+  .kpi .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .kpi .k-val{font-family:var(--font-display);font-weight:700;font-size:30px;margin-top:8px;letter-spacing:-1px;line-height:1}
+  .kpi .k-foot{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin-top:5px}
+
+  /* ---------- Charts ---------- */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow)}
+  .card h3{font-family:var(--font-display);font-weight:600;font-size:15px;margin:0 0 4px}
+  .card .csub{font-size:12px;color:var(--ink-faint);margin:0 0 14px}
+  .chart-box{position:relative;height:280px}
+  .chart-box.tall{height:340px}
+  .chart-empty{display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;
+    flex-direction:column;gap:6px;color:var(--ink-faint);font-size:13px;padding:24px;line-height:1.5}
+  .chart-empty code{font-family:var(--font-mono);font-size:11.5px;background:var(--surface-2);border:1px solid var(--line);padding:2px 6px;border-radius:5px;color:var(--ink-soft)}
+  .card .chead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
+  .seg button{border:none;background:var(--surface);color:var(--ink-soft);padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body)}
+  .seg button.on{background:var(--green);color:#fff}
+  .seg button:focus-visible{outline:2px solid var(--green);outline-offset:-2px}
+  .cap{font-size:11px;color:var(--ink-faint);margin-top:9px;font-family:var(--font-mono);line-height:1.4}
+
+  /* ---------- Tabella ---------- */
+  .table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+  .table-scroll{max-height:640px;overflow-y:auto}
+  .table-scroll::-webkit-scrollbar{width:10px}
+  .table-scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+  .table-scroll::-webkit-scrollbar-thumb:hover{background:#C7D2BF}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  thead th{position:sticky;top:0;background:var(--surface-2);text-align:left;padding:11px 13px;font-size:12px;
+    font-weight:600;color:var(--ink-soft);border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+  thead th.no-sort{cursor:default}
+  thead th .arr{color:var(--green);font-size:11px}
+  tbody td{padding:11px 13px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+  tbody tr:hover{background:var(--surface-2)}
+  td.name b{font-weight:600}
+  .pver{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);font-weight:400;margin-left:7px;vertical-align:middle}
+  .pcell{display:flex;gap:10px;align-items:flex-start}
+  .picon-box{position:relative;width:28px;height:28px;flex:none;border-radius:7px;overflow:hidden;
+    background:var(--surface-2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .picon-ph{font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--ink-faint)}
+  .picon{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff}
+  td.name .desc{display:block;color:var(--ink-faint);font-size:12px;margin-top:3px;max-width:430px}
+  td.num{font-family:var(--font-mono);text-align:right;white-space:nowrap}
+  .tag{display:inline-block;background:var(--surface-2);border:1px solid var(--line);border-radius:20px;
+    padding:1px 8px;font-size:11px;color:var(--ink-soft);margin:2px 3px 0 0}
+  .badge{font-family:var(--font-mono);font-size:10px;padding:1px 6px;border-radius:5px;font-weight:700;margin-left:5px;vertical-align:middle}
+  .badge.exp{background:#FBEFD6;color:var(--amber)}
+  .badge.dep{background:#F7E0DC;color:var(--red)}
+  .qrange{font-family:var(--font-mono);font-size:12.5px;white-space:nowrap}
+  .vb{display:inline-block;font-family:var(--font-mono);font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap;cursor:help}
+  .vb.v3{background:#F7E0DC;color:var(--red)}
+  .vb.v4{background:#D8F0C4;color:var(--green-deep)}
+  .vb.both{background:#E3ECEF;color:var(--teal)}
+  .itmark{display:inline-block;font-family:var(--font-mono);font-size:10px;font-weight:700;background:#E3ECEF;color:var(--teal);border-radius:4px;padding:0 5px;vertical-align:middle}
+  mark{background:#D8F0C4;color:var(--ink);padding:0 1px;border-radius:2px}
+  .empty{padding:40px;text-align:center;color:var(--ink-faint)}
+  .tbl-foot{padding:10px 14px;font-size:12px;color:var(--ink-faint);font-family:var(--font-mono);border-top:1px solid var(--line)}
+
+  footer{padding:30px 0 50px;color:var(--ink-faint);font-size:12.5px;text-align:center}
+  footer code{font-family:var(--font-mono)}
+
+  .muted-screen{opacity:.4;pointer-events:none;filter:saturate(.4)}
+
+  @media (max-width:960px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .grid2{grid-template-columns:1fr}
+  }
+  @media (max-width:560px){
+    .search-row{flex-direction:column}
+    td.name .desc{max-width:none}
+  }
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <svg class="contours" preserveAspectRatio="none" viewBox="0 0 1200 200" aria-hidden="true">
+    <g fill="none" stroke="#7FB07A" stroke-width="1.2">
+      <path d="M0,150 C200,120 320,170 520,140 C720,110 860,160 1060,130 C1140,118 1200,140 1200,140"/>
+      <path d="M0,120 C200,92 340,138 540,110 C740,82 880,128 1080,100 C1150,90 1200,108 1200,108"/>
+      <path d="M0,90 C220,64 360,104 560,80 C760,56 900,96 1100,72 C1160,64 1200,78 1200,78"/>
+      <path d="M0,60 C220,38 380,72 580,52 C780,32 920,66 1120,48 C1170,42 1200,52 1200,52"/>
+      <path d="M0,178 C240,150 380,194 600,166 C820,138 960,180 1160,156 C1185,153 1200,162 1200,162"/>
+    </g>
+  </svg>
+  <div class="wrap">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="22" fill="none" stroke="#7FB07A" stroke-width="2"/>
+        <path d="M14 30 L22 16 L28 26 L34 18" fill="none" stroke="#9FD89A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="14" cy="30" r="2.6" fill="#9FD89A"/><circle cx="34" cy="18" r="2.6" fill="#9FD89A"/>
+      </svg>
+      <div>
+        <h1>QGIS Plugin Explorer</h1>
+        <div class="sub">catalogo ufficiale · controllo duplicati · statistiche</div>
+      </div>
+    </div>
+    <p class="lead">Interroga il repository ufficiale <strong>plugins.qgis.org</strong> per capire se un plugin esiste già prima di svilupparne uno nuovo, e analizza il catalogo nel suo insieme: download, autori, tag, versioni, evoluzione nel tempo.</p>
+  </div>
+</header>
+
+<div class="source">
+  <div class="wrap">
+    <label class="fld">Versione QGIS
+      <select id="verSel" title="Filtra i plugin compatibili con questa versione">
+        <option value="3.40">3.40 (LTR)</option>
+        <option value="3.34">3.34</option>
+        <option value="3.28">3.28</option>
+        <option value="3.22">3.22</option>
+        <option value="4.0">4.0</option>
+        <option value="3.0">3.0 (max compatibilità)</option>
+      </select>
+    </label>
+    <label class="fld" style="margin-left:4px" title="Filtra i plugin caricati in base alla versione selezionata">Filtro versione
+      <select id="verMode">
+        <option value="off">nessuno</option>
+        <option value="compat">compatibili con</option>
+        <option value="minge">min ≥</option>
+        <option value="maxlt">max &lt;</option>
+      </select>
+    </label>
+    <label class="chk" title="Euristica: dominio .it in homepage/repository/tracker OPPURE autore/organizzazione in una allowlist curata della community QGIS italiana (Faunalia, ItOpen, Gis3W, Gter, Pasotti, Ghetta, Fiandaca, CNR-IGAG…). Il feed non ha un campo nazione, quindi resta un'approssimazione: può sfuggire qualche autore non in lista."><input type="checkbox" id="onlyIt"> solo autori .it</label>
+    <button class="btn primary" id="btnFile">Carica file XML…</button>
+    <input type="file" id="fileInput" accept=".xml,text/xml" multiple>
+    <button class="btn" id="btnReset" disabled title="Svuota tutti i file caricati">Svuota</button>
+    <span class="status" id="status">in attesa di dati…</span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="hint" id="hint">
+    <strong>Come caricare i dati.</strong> Il browser non può scaricare da plugins.qgis.org (CORS). Scarica uno o più feed con <code>curl</code>, poi <em>trascinali insieme</em> qui (o usa <em>Carica file XML</em>, selezione multipla). Caricando più feed di versioni diverse vengono <em>fusi</em>: per ogni plugin si tiene la versione più alta. Esempio per avere sia i plugin QGIS 3 sia i nativi QGIS 4:
+    <div class="cmd">
+      <code id="curlCmd">curl -s "https://plugins.qgis.org/plugins/plugins.xml?qgis=3.40" -o plugins-3.xml</code>
+      <button class="btn" id="copyCurl">Copia</button>
+    </div>
+    <div class="cmd" style="margin-top:6px">
+      <code id="curlCmd4">curl -s "https://plugins.qgis.org/plugins/plugins.xml?qgis=4.0" -o plugins-4.xml</code>
+    </div>
+  </div>
+</div>
+
+<main id="dash" class="muted-screen">
+
+  <section class="wrap" id="searchSec">
+    <div class="eyebrow">Controllo duplicati</div>
+    <h2 class="sec">Esiste già un plugin che fa questo?</h2>
+    <div class="search-panel">
+      <div class="search-row">
+        <input type="text" id="q" placeholder="es. sort features, contour, isoipse, geocoding…" autocomplete="off">
+        <button class="btn primary" id="clearBtn" title="Pulisci">Pulisci</button>
+      </div>
+      <div class="opts">
+        <span style="font-size:12px;color:var(--ink-faint);font-weight:600">Cerca in:</span>
+        <label class="chk"><input type="checkbox" class="scope" value="name" checked> nome</label>
+        <label class="chk"><input type="checkbox" class="scope" value="description" checked> descrizione</label>
+        <label class="chk"><input type="checkbox" class="scope" value="about" checked> about</label>
+        <label class="chk"><input type="checkbox" class="scope" value="tags" checked> tag</label>
+        <label class="chk"><input type="checkbox" class="scope" value="author"> autore</label>
+        <span style="flex:1"></span>
+        <label class="chk"><input type="checkbox" id="regexFlag"> <span class="reg-flag">regex</span></label>
+        <label class="chk"><input type="checkbox" id="hideExp"> nascondi sperimentali</label>
+        <label class="chk"><input type="checkbox" id="hideDep" checked> nascondi deprecati</label>
+        <label class="chk"><input type="checkbox" id="onlyMaintained"> solo mantenuti (≤2 anni)</label>
+      </div>
+      <div class="count-line" id="countLine">Carica i dati per iniziare.</div>
+    </div>
+
+    <div class="name-check" id="nameCheck">
+      <div class="nc-row">
+        <span class="nc-label">Il nome è libero?</span>
+        <input type="text" id="nameInput" placeholder="nome del plugin che vuoi creare…" autocomplete="off">
+      </div>
+      <div class="nc-result" id="nameResult"></div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="tbl-toolbar">
+      <span class="tt-info" id="ttInfo"></span>
+      <label class="tt-show">Mostra
+        <select id="pageSize">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="100">100</option>
+          <option value="all">tutti</option>
+        </select>
+      </label>
+      <button class="btn" id="btnCsv" disabled>Esporta CSV</button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-scroll" id="tableScroll">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th data-sort="name">Nome <span class="arr"></span></th>
+            <th data-sort="author" class="">Autore</th>
+            <th data-sort="downloads" class="num-h">Download <span class="arr"></span></th>
+            <th data-sort="vote" class="num-h">Voto <span class="arr"></span></th>
+            <th class="no-sort">Tag</th>
+            <th data-sort="qmin">QGIS <span class="arr"></span></th>
+            <th data-sort="updated">Aggiornato <span class="arr"></span></th>
+            <th class="no-sort">Link</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"><tr><td colspan="8" class="empty">Nessun dato caricato.</td></tr></tbody>
+      </table>
+      </div>
+      <div class="tbl-foot" id="tblFoot"></div>
+    </div>
+
+    <div class="related" id="relatedSec" style="display:none">
+      <div class="rel-head">Plugin correlati per tag <span class="rel-sub">vicini concettuali ai risultati, anche se non contengono le tue parole chiave</span></div>
+      <div class="rel-list" id="relatedList"></div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="eyebrow">Panoramica catalogo</div>
+    <h2 class="sec">Statistiche</h2>
+    <p class="scope-note" id="statScope">Carica un file per vedere le statistiche.</p>
+    <div class="kpis">
+      <div class="kpi"><div class="k-label"><span class="dot" style="background:var(--green)"></span>Plugin</div><div class="k-val" id="kPlugins">—</div><div class="k-foot" id="kPluginsF"></div></div>
+      <div class="kpi"><div class="k-label"><span class="dot" style="background:var(--teal)"></span>Download totali</div><div class="k-val" id="kDown">—</div><div class="k-foot">somma installazioni</div></div>
+      <div class="kpi"><div class="k-label"><span class="dot" style="background:var(--green-deep)"></span>Autori</div><div class="k-val" id="kAuth">—</div><div class="k-foot">distinti</div></div>
+      <div class="kpi"><div class="k-label"><span class="dot" style="background:var(--amber)"></span>Sperimentali</div><div class="k-val" id="kExp">—</div><div class="k-foot" id="kExpF"></div></div>
+      <div class="kpi"><div class="k-label"><span class="dot" style="background:var(--red)"></span>Deprecati</div><div class="k-val" id="kDep">—</div><div class="k-foot" id="kDepF"></div></div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="grid2">
+      <div class="card"><h3>Top 15 tag</h3><p class="csub">Le funzionalità più presidiate del catalogo</p><div class="chart-box tall"><canvas id="chTags"></canvas></div></div>
+      <div class="card"><h3>Plugin per versione minima QGIS</h3><p class="csub">Su quale base versione puntano gli autori</p><div class="chart-box tall"><canvas id="chVer"></canvas></div></div>
+    </div>
+    <div class="grid2" style="margin-top:18px">
+      <div class="card">
+        <div class="chead">
+          <div><h3 id="yearTitle">Nuovi plugin per anno</h3><p class="csub" id="yearSub">Prime pubblicazioni · campo create_date</p></div>
+          <div class="seg" role="group" aria-label="Metrica annuale">
+            <button id="segCreated" class="on" type="button">Creati</button>
+            <button id="segUpdated" type="button">Aggiornati</button>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="chYear"></canvas></div>
+        <div class="cap" id="yearCap"></div>
+      </div>
+      <div class="card"><h3>Top 12 autori per numero di plugin</h3><p class="csub">Chi pubblica di più</p><div class="chart-box"><canvas id="chAuth"></canvas></div></div>
+    </div>
+    <div class="grid2" style="margin-top:18px">
+      <div class="card"><h3>Top 12 plugin più scaricati</h3><p class="csub">I più installati nell'insieme corrente</p><div class="chart-box tall"><canvas id="chTop"></canvas></div></div>
+      <div class="card"><h3>Plugin deprecati per download</h3><p class="csub">Precedenti abbandonati ma un tempo diffusi</p>
+        <div class="chart-box tall" style="position:relative">
+          <canvas id="chDep"></canvas>
+          <div class="chart-empty" id="depEmpty">Nessun plugin deprecato nell'insieme caricato. Il feed standard non li include: per l'elenco completo vedi <code>plugins.qgis.org/plugins/deprecated/</code></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  Dati: <code>plugins.qgis.org/plugins/plugins.xml?qgis=&lt;versione&gt;</code> · Ogni feed è già filtrato lato server dalla versione di download. Carica più feed (es. 3.40 + 4.0) per un quadro completo: vengono fusi per <code>plugin_id</code> tenendo la versione più alta. Nessun dato lascia il browser.
+</footer>
+
+<!-- allowlist autori/organizzazioni IT, editabile a mano (vedi commenti nel file) -->
+<script src="it-authors.js"></script>
+<script>
+/* ============================================================
+   Stato globale + utilità
+   ============================================================ */
+let ALL = [];                 // plugin unici dopo fusione/dedup
+let RAW = [];                 // tutte le voci grezze accumulate da tutti i file caricati
+let FILES = [];               // elenco dei file caricati {name, count}
+const charts = {};            // istanze Chart.js per distruzione/refresh
+const $ = id => document.getElementById(id);
+const nf = n => (n==null||isNaN(n)) ? '—' : n.toLocaleString('it-IT');
+const esc = s => (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ITRE = /https?:\/\/[^\/\s"']*\.it(?:[\/:?#]|$)/i;   // euristica: dominio .it negli URL
+/* Allowlist della community QGIS italiana: caricata dal file esterno editabile
+   it-authors.js (vedi window.IT_AUTHORS_LIST). Abbinata al dominio .it, alza il
+   recall del filtro "solo autori .it" mantenendo alta la precisione. Se il file
+   manca o è vuoto, IT_AUTHORS è una regex che non matcha nulla (resta solo .it). */
+const IT_AUTHORS = (() => {
+  const list = (window.IT_AUTHORS_LIST || []).filter(Boolean);
+  if(!list.length) return /(?!)/;                       // non matcha nulla
+  return new RegExp(list.map(s=>'\\b'+s+'\\b').join('|'),'i');
+})();
+
+function setStatus(msg, isErr){
+  const el=$('status'); el.innerHTML=msg; el.classList.toggle('err',!!isErr);
+}
+function pluginUrl(){ return 'https://plugins.qgis.org/plugins/plugins.xml?qgis='+$('verSel').value; }
+
+/* aggiorna il comando curl quando cambia la versione */
+function syncCurl(){
+  const ver=$('verSel').value;
+  $('curlCmd').textContent='curl -s "'+pluginUrl()+'" -o plugins-'+ver+'.xml';
+}
+$('verSel').addEventListener('change', ()=>{ syncCurl(); if(ALL.length && $('verMode').value!=='off'){ computeStats(); render(); } });
+
+/* ============================================================
+   Caricamento dati: uno o più file, fusi insieme (CORS impedisce il fetch diretto)
+   ============================================================ */
+function loadFiles(fileList){
+  Array.from(fileList).forEach(f=>{
+    const rd=new FileReader();
+    rd.onload=()=>ingest(rd.result, f.name);
+    rd.onerror=()=>setStatus('errore lettura '+esc(f.name),true);
+    rd.readAsText(f);
+  });
+}
+function resetData(){
+  RAW=[]; FILES=[]; ALL=[]; VIEW=[];
+  $('dash').classList.add('muted-screen');
+  $('btnReset').disabled=true; $('btnCsv').disabled=true;
+  $('tbody').innerHTML='<tr><td colspan="8" class="empty">Nessun dato caricato.</td></tr>';
+  $('tableScroll').style.maxHeight=''; $('relatedSec').style.display='none';
+  $('statScope').textContent='Carica uno o più file per vedere le statistiche.';
+  setStatus('in attesa di dati…');
+}
+$('btnFile').addEventListener('click', ()=>$('fileInput').click());
+$('fileInput').addEventListener('change', e=>{ if(e.target.files.length) loadFiles(e.target.files); e.target.value=''; });
+$('btnReset').addEventListener('click', resetData);
+$('copyCurl').addEventListener('click',()=>{
+  navigator.clipboard.writeText($('curlCmd').textContent).then(()=>{
+    $('copyCurl').textContent='Copiato'; setTimeout(()=>$('copyCurl').textContent='Copia',1400);
+  });
+});
+
+/* ============================================================
+   Parsing XML del feed plugins.xml
+   ============================================================ */
+function txt(node,tag){ const el=node.getElementsByTagName(tag)[0]; return el?el.textContent.trim():''; }
+function parseDate(s){ const d=new Date(s); return isNaN(d)?null:d; }
+
+function ingest(xmlString, fileName){
+  let doc;
+  try{ doc=new DOMParser().parseFromString(xmlString,'application/xml'); }
+  catch(e){ setStatus('XML non valido in '+esc(fileName),true); return; }
+  if(doc.getElementsByTagName('parsererror').length){ setStatus('XML non valido / non è un feed plugins: '+esc(fileName),true); return; }
+
+  const nodes=doc.getElementsByTagName('pyqgis_plugin');
+  if(!nodes.length){ setStatus('nessun plugin trovato in '+esc(fileName),true); return; }
+
+  const entries=Array.from(nodes).map(n=>{
+    const created=parseDate(txt(n,'create_date'));
+    const updated=parseDate(txt(n,'update_date'));
+    const tagsRaw=txt(n,'tags');
+    return {
+      id:n.getAttribute('plugin_id')||'',
+      name:n.getAttribute('name')||txt(n,'name'),
+      version:n.getAttribute('version')||txt(n,'version'),
+      description:txt(n,'description'),
+      about:txt(n,'about'),
+      author:txt(n,'author_name'),
+      homepage:txt(n,'homepage'),
+      icon:txt(n,'icon'),
+      it: ITRE.test(txt(n,'homepage')+' '+txt(n,'repository')+' '+txt(n,'tracker'))
+          || IT_AUTHORS.test(txt(n,'author_name')+' '+txt(n,'uploaded_by')),
+      repo:txt(n,'repository'),
+      tracker:txt(n,'tracker'),
+      download_url:txt(n,'download_url'),
+      qmin:txt(n,'qgis_minimum_version'),
+      qmax:txt(n,'qgis_maximum_version'),
+      experimental:/true/i.test(txt(n,'experimental')),
+      deprecated:/true/i.test(txt(n,'deprecated')),
+      downloads:parseInt(txt(n,'downloads'),10)||0,
+      vote:parseFloat(txt(n,'average_vote'))||0,
+      votes:parseInt(txt(n,'rating_votes'),10)||0,
+      tags:tagsRaw?tagsRaw.split(',').map(t=>t.trim()).filter(Boolean):[],
+      created, updated,
+    };
+  });
+
+  RAW=RAW.concat(entries);
+  FILES.push({name:fileName, count:entries.length});
+  ALL=dedupe(RAW);
+
+  const merged=RAW.length-ALL.length;
+  const filesTxt = FILES.length>1 ? ' da <b>'+FILES.length+'</b> file' : '';
+  setStatus('<b>'+nf(ALL.length)+'</b> plugin unici'+filesTxt
+    +(merged>0?' <span style="color:var(--ink-faint)">('+nf(RAW.length)+' voci, '+nf(merged)+' fuse)</span>':''));
+  $('btnReset').disabled=false;
+  $('dash').classList.remove('muted-screen');
+  computeStats();
+  render();
+}
+
+/* Un plugin può comparire più volte nel feed (versione stabile + sperimentale):
+   stesso name, version diversa. Le uniamo in una sola voce per plugin. */
+function preferEntry(a,b){
+  if(a.experimental!==b.experimental) return a.experimental ? b : a;   // preferisci la stabile
+  return vcmp(a.version,b.version)>=0 ? a : b;                          // altrimenti la versione più alta
+}
+function dedupe(list){
+  const map=new Map();
+  for(const p of list){
+    const key=(p.id&&p.id.trim()) ? 'id:'+p.id.trim() : 'name:'+(p.name||'').toLowerCase().trim();
+    const ex=map.get(key);
+    if(!ex){ map.set(key,{...p}); continue; }
+    const pick=preferEntry(ex,p);                 // voce "principale" per i campi descrittivi
+    const m={...pick};
+    m.downloads=Math.max(ex.downloads,p.downloads);
+    m.votes=Math.max(ex.votes,p.votes);
+    m.experimental=ex.experimental && p.experimental;   // sperimentale solo se NON esiste una stabile
+    m.deprecated=ex.deprecated || p.deprecated;          // deprecated vale per l'intero plugin
+    m.it=ex.it || p.it;
+    m.created=(ex.created&&p.created)?(ex.created<p.created?ex.created:p.created):(ex.created||p.created); // prima pubblicazione = più vecchia
+    m.updated=(ex.updated&&p.updated)?(ex.updated>p.updated?ex.updated:p.updated):(ex.updated||p.updated); // ultimo aggiornamento = più recente
+    map.set(key,m);
+  }
+  return [...map.values()];
+}
+
+/* ============================================================
+   Statistiche + grafici
+   ============================================================ */
+let VIEW=[];   // insieme effettivamente visualizzato (ALL eventualmente filtrato per versione)
+
+/* confronto semantico versioni: "3.40" > "3.4" gestito correttamente */
+function vparse(s){ return (s||'').split('.').map(x=>parseInt(x,10)||0); }
+function vcmp(a,b){ a=vparse(a); b=vparse(b); const n=Math.max(a.length,b.length);
+  for(let i=0;i<n;i++){ const d=(a[i]||0)-(b[i]||0); if(d) return d<0?-1:1; } return 0; }
+function compatible(p,v){
+  if(p.qmin && vcmp(p.qmin,v)>0) return false;   // richiede una versione più alta di v
+  if(p.qmax && vcmp(v,p.qmax)>0) return false;   // v supera il massimo dichiarato
+  return true;
+}
+function activeSet(){
+  let base=ALL;
+  if($('onlyIt').checked) base=base.filter(p=>p.it);
+  const mode=$('verMode').value;
+  if(mode==='off') return base;
+  const v=$('verSel').value;
+  if(mode==='minge') return base.filter(p=>p.qmin && vcmp(p.qmin,v)>=0);
+  if(mode==='maxlt') return base.filter(p=>p.qmax && vcmp(p.qmax,v)<0);
+  return base.filter(p=>compatible(p,v));   // 'compat'
+}
+
+function computeStats(){
+  VIEW=activeSet();
+  const tot=VIEW.length;
+  const down=VIEW.reduce((s,p)=>s+p.downloads,0);
+  const authors=new Set(VIEW.map(p=>p.author).filter(Boolean));
+  const exp=VIEW.filter(p=>p.experimental).length;
+  const dep=VIEW.filter(p=>p.deprecated).length;
+  const mode=$('verMode').value;
+  const v=$('verSel').value;
+
+  $('kPlugins').textContent=nf(tot);
+  $('kPluginsF').textContent =
+      mode==='compat' ? 'compatibili con QGIS '+v+' · '+nf(ALL.length)+' totali'
+    : mode==='minge'  ? 'versione minima ≥ '+v+' · '+nf(ALL.length)+' totali'
+    : mode==='maxlt'  ? 'tetto massimo < QGIS '+v+' · '+nf(ALL.length)+' totali'
+    : (FILES.length>1 ? FILES.length+' file uniti' : 'da file caricato');
+
+  // nota di contesto: a cosa si riferiscono i valori + stato del filtro
+  const src = FILES.length>1
+    ? '<strong>'+FILES.length+' feed uniti</strong> (deduplicati per plugin_id, tenuta la versione più alta)'
+    : '<strong>file caricato</strong> (la versione QGIS del feed dipende da come l\'hai scaricato)';
+  let s;
+  if(mode==='compat'){
+    s='Dati dal '+src+', <span class="flt">filtrati per compatibilità con QGIS '+v+'</span> '
+      +'(min ≤ '+v+' ≤ max): i valori si riferiscono ai <strong>'+nf(tot)+'</strong> plugin compatibili, su '+nf(ALL.length)+' nel feed.';
+  } else if(mode==='minge'){
+    s='Dati dal '+src+', <span class="flt">solo con versione minima ≥ QGIS '+v+'</span>: '
+      +'i valori si riferiscono ai <strong>'+nf(tot)+'</strong> plugin pensati per la '+v+' o successive, su '+nf(ALL.length)+' nel feed.';
+  } else if(mode==='maxlt'){
+    s='Dati dal '+src+', <span class="flt">solo con versione massima &lt; QGIS '+v+'</span>: '
+      +'i valori si riferiscono ai <strong>'+nf(tot)+'</strong> plugin con un tetto dichiarato sotto la '+v
+      +(vcmp(v,'4.0')===0?' (cioè compatibili solo con QGIS 3)':'')+', su '+nf(ALL.length)+' nel feed.';
+  } else {
+    s='Dati dal '+src+', <span class="flt">nessun filtro di versione attivo</span>: '
+      +'i valori si riferiscono a tutti i <strong>'+nf(tot)+'</strong> plugin del feed. '
+      +'Usa «Filtro versione» in alto per restringere.';
+  }
+  $('statScope').innerHTML=s + ($('onlyIt').checked ? ' <span class="flt">· solo autori .it</span> (dominio .it + allowlist autori/organizzazioni IT note; approssimazione, può sfuggire chi non è in lista).' : '');
+  $('kDown').textContent=down>1e6?(down/1e6).toFixed(1).replace('.',',')+' M':nf(down);
+  $('kAuth').textContent=nf(authors.size);
+  $('kExp').textContent=nf(exp);
+  $('kExpF').textContent=tot?((exp/tot*100).toFixed(1).replace('.',','))+'% del totale':'';
+  $('kDep').textContent=nf(dep);
+  $('kDepF').textContent=tot?((dep/tot*100).toFixed(1).replace('.',','))+'% del totale':'';
+
+  drawTags(); drawVersions(); drawYears(); drawAuthors(); drawTopDownloads(); drawDeprecated();
+}
+
+const GREEN='#589632', TEAL='#2E5E4E', DEEP='#2E6B3E', AMBER='#C8851A', RED='#B23A2E';
+const trunc=(s,n)=>(s&&s.length>n)?s.slice(0,n-1)+'…':(s||'');
+const gridCfg={grid:{color:'#E8EDE2'},ticks:{color:'#4A5A50',font:{family:'Inter',size:11}}};
+function mkChart(id,cfg){
+  if(charts[id]) charts[id].destroy();
+  charts[id]=new Chart($(id),cfg);
+}
+
+function topCount(arrFn, n){
+  const m=new Map();
+  VIEW.forEach(p=>arrFn(p).forEach(k=>{ if(k) m.set(k,(m.get(k)||0)+1); }));
+  return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n);
+}
+
+function drawTags(){
+  const top=topCount(p=>p.tags,15);
+  mkChart('chTags',{type:'bar',data:{labels:top.map(t=>t[0]),
+    datasets:[{data:top.map(t=>t[1]),backgroundColor:GREEN,borderRadius:5}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{...gridCfg,beginAtZero:true},y:{...gridCfg,grid:{display:false}}}}});
+}
+function drawVersions(){
+  const m=new Map();
+  VIEW.forEach(p=>{ const v=p.qmin||'n/d'; m.set(v,(m.get(v)||0)+1); });
+  const arr=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,12);
+  mkChart('chVer',{type:'bar',data:{labels:arr.map(a=>a[0]),
+    datasets:[{data:arr.map(a=>a[1]),backgroundColor:TEAL,borderRadius:5}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{...gridCfg,beginAtZero:true},y:{...gridCfg,grid:{display:false}}}}});
+}
+let yearMode='created';   // 'created' | 'updated'
+function drawYears(){
+  const field = yearMode==='created' ? 'created' : 'updated';
+  const m=new Map();
+  VIEW.forEach(p=>{ const d=p[field]; if(d){ const y=d.getFullYear(); m.set(y,(m.get(y)||0)+1); }});
+  const years=[...m.keys()].sort((a,b)=>a-b);
+  const counts=years.map(y=>m.get(y));
+  const curYear=new Date().getFullYear();
+  const partialIdx = years[years.length-1]===curYear ? years.length-1 : -1;
+
+  // testi descrittivi
+  $('yearTitle').textContent = yearMode==='created' ? 'Nuovi plugin per anno' : 'Plugin aggiornati per anno';
+  $('yearSub').textContent = yearMode==='created'
+    ? 'Prime pubblicazioni · campo create_date'
+    : 'Ultimo aggiornamento registrato · campo update_date';
+  if(partialIdx>=0){
+    const today=new Date().toISOString().slice(0,10);
+    $('yearCap').textContent='* '+curYear+' è un anno in corso: dati parziali al '+today+', non confrontabile con gli anni interi.';
+  } else $('yearCap').textContent='';
+
+  const labels = years.map(y => y===curYear ? y+' *' : ''+y);
+
+  // marcatore verticale tratteggiato sull'anno in corso
+  const partialMarker = {
+    id:'partialMarker',
+    afterDraw(chart){
+      if(partialIdx<0) return;
+      const pt=chart.getDatasetMeta(0).data[partialIdx]; if(!pt) return;
+      const {ctx, chartArea:{top,bottom}}=chart;
+      ctx.save();
+      ctx.beginPath(); ctx.setLineDash([4,4]); ctx.strokeStyle='rgba(74,90,80,.5)'; ctx.lineWidth=1;
+      ctx.moveTo(pt.x,top); ctx.lineTo(pt.x,bottom); ctx.stroke();
+      ctx.setLineDash([]); ctx.fillStyle='rgba(74,90,80,.85)';
+      ctx.font='600 10px Inter, sans-serif'; ctx.textAlign='right';
+      ctx.fillText('in corso', pt.x-6, top+11);
+      ctx.restore();
+    }
+  };
+
+  mkChart('chYear',{type:'line',
+    data:{labels,
+      datasets:[{data:counts,borderColor:GREEN,backgroundColor:'rgba(88,150,50,.15)',fill:true,tension:.3,
+        pointRadius: years.map((y,i)=> i===partialIdx?4:3),
+        pointBackgroundColor: years.map((y,i)=> i===partialIdx?'#fff':GREEN),
+        pointBorderColor:GREEN, pointBorderWidth:2,
+        segment:{ borderDash: ctx => ctx.p1DataIndex===partialIdx ? [5,4] : undefined }
+      }]},
+    options:{maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:gridCfg,y:{...gridCfg,beginAtZero:true}}},
+    plugins:[partialMarker]});
+}
+function drawAuthors(){
+  const top=topCount(p=>[p.author],12);
+  mkChart('chAuth',{type:'bar',data:{labels:top.map(t=>t[0]),
+    datasets:[{data:top.map(t=>t[1]),backgroundColor:DEEP,borderRadius:5}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{...gridCfg,beginAtZero:true},y:{...gridCfg,grid:{display:false}}}}});
+}
+function dlBar(id,items,color){
+  const names=items.map(p=>p.name);
+  mkChart(id,{type:'bar',
+    data:{labels:names.map(n=>trunc(n,26)),
+      datasets:[{data:items.map(p=>p.downloads),backgroundColor:color,borderRadius:5}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:it=>names[it[0].dataIndex],
+        label:c=>nf(c.parsed.x)+' download'}}},
+      scales:{x:{...gridCfg,beginAtZero:true},y:{...gridCfg,grid:{display:false}}}}});
+}
+function drawTopDownloads(){
+  const top=[...VIEW].sort((a,b)=>b.downloads-a.downloads).slice(0,12);
+  dlBar('chTop',top,TEAL);
+}
+function drawDeprecated(){
+  const dep=VIEW.filter(p=>p.deprecated).sort((a,b)=>b.downloads-a.downloads).slice(0,12);
+  const empty=$('depEmpty');
+  if(dep.length===0){
+    if(charts['chDep']){ charts['chDep'].destroy(); delete charts['chDep']; }
+    empty.style.display='flex';
+    return;
+  }
+  empty.style.display='none';
+  dlBar('chDep',dep,RED);
+}
+
+/* ============================================================
+   Ricerca + tabella
+   ============================================================ */
+let sortKey='downloads', sortDir=-1;
+
+function buildMatcher(){
+  const raw=$('q').value.trim();
+  if(!raw) return {test:()=>true, raw:''};
+  if($('regexFlag').checked){
+    try{ const re=new RegExp(raw,'i'); return {test:s=>re.test(s), raw, re}; }
+    catch(e){ return {test:()=>false, raw, bad:true}; }
+  }
+  const terms=raw.toLowerCase().split(/\s+/);
+  return {test:s=>{const l=(s||'').toLowerCase(); return terms.every(t=>l.includes(t));}, raw};
+}
+function scopes(){ return [...document.querySelectorAll('.scope:checked')].map(c=>c.value); }
+
+function filtered(){
+  const m=buildMatcher();
+  const sc=scopes();
+  const hideExp=$('hideExp').checked, hideDep=$('hideDep').checked, onlyMaint=$('onlyMaintained').checked;
+  let rows=VIEW.filter(p=>{
+    if(hideExp&&p.experimental) return false;
+    if(hideDep&&p.deprecated) return false;
+    if(onlyMaint){ const yy=yearsSince(p.updated); if(yy==null||yy>2) return false; }
+    if(!m.raw) return true;
+    const hay=sc.map(k=> k==='tags' ? p.tags.join(' ') : (p[k]||'')).join('  ');
+    return m.test(hay);
+  });
+  rows.sort((a,b)=>{
+    let x,y;
+    switch(sortKey){
+      case 'name': x=a.name.toLowerCase(); y=b.name.toLowerCase(); return x<y?-sortDir:x>y?sortDir:0;
+      case 'author': x=(a.author||'').toLowerCase(); y=(b.author||'').toLowerCase(); return x<y?-sortDir:x>y?sortDir:0;
+      case 'vote': x=a.vote; y=b.vote; break;
+      case 'qmin': x=a.qmin; y=b.qmin; return x<y?-sortDir:x>y?sortDir:0;
+      case 'updated': x=a.updated?a.updated.getTime():0; y=b.updated?b.updated.getTime():0; break;
+      default: x=a.downloads; y=b.downloads;
+    }
+    return (x-y)*sortDir;
+  });
+  return {rows, matcher:m};
+}
+
+function highlight(text,m){
+  if(!m.raw||!text) return esc(text);
+  if(m.re){ try{ return esc(text).replace(new RegExp('('+m.raw+')','ig'),'<mark>$1</mark>'); }catch(e){ return esc(text); } }
+  let out=esc(text);
+  m.raw.toLowerCase().split(/\s+/).forEach(t=>{
+    if(t) out=out.replace(new RegExp('('+t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig'),'<mark>$1</mark>');
+  });
+  return out;
+}
+
+function fmtDate(d){ return d? d.toISOString().slice(0,10) : '—'; }
+function yearsSince(d){ return d ? (Date.now()-d.getTime())/(365.25*24*3600*1000) : null; }
+function slugOf(p){ const m=(p.download_url||'').match(/\/plugins\/([^\/]+)\/version\//i); return m?m[1]:''; }
+function schedaUrl(p){ const s=slugOf(p); return s?'https://plugins.qgis.org/plugins/'+s+'/':''; }
+function ageCell(p){
+  const y=yearsSince(p.updated);
+  let cls='', lbl='';
+  if(y!=null){
+    cls = y>2?'old':(y>1?'mid':'ok');
+    lbl = y<1 ? '<1 anno fa' : Math.floor(y)+(Math.floor(y)===1?' anno fa':' anni fa');
+  }
+  return '<span class="age '+cls+'">'+fmtDate(p.updated)+'</span>'+(lbl?'<span class="agelbl '+(cls==='old'?'old':'')+'">'+lbl+'</span>':'');
+}
+/* classifica la compatibilità sul confine QGIS 3 / 4 */
+function qgisClass(p){
+  if(p.qmax && vcmp(p.qmax,'4.0')<0) return {label:'solo v3', cls:'v3'};
+  if(p.qmin && vcmp(p.qmin,'4.0')>=0) return {label:'solo v4', cls:'v4'};
+  return {label:'v3 e v4', cls:'both'};
+}
+
+function render(){
+  const {rows,matcher}=filtered();
+  // riga conteggio nel pannello ricerca
+  const cl=$('countLine');
+  if(matcher.bad){ cl.innerHTML='<b style="color:var(--red)">regex non valida</b>'; }
+  else if(!matcher.raw){ cl.innerHTML='<b>'+nf(rows.length)+'</b> plugin nel catalogo (filtri attivi applicati).'; }
+  else if(rows.length===0){ cl.innerHTML='<b>0</b> risultati — nessun plugin corrisponde. Possibile spazio libero per il tuo sviluppo.'; }
+  else { cl.innerHTML='<b>'+nf(rows.length)+'</b> plugin corrispondono — verifica se uno copre già il tuo caso d\'uso prima di sviluppare.'; }
+
+  $('ttInfo').textContent = nf(rows.length)+' risultati nel filtro corrente';
+  $('btnCsv').disabled = rows.length===0;
+  lastRows = rows;
+
+  const tb=$('tbody');
+  if(rows.length===0){ tb.innerHTML='<tr><td colspan="8" class="empty">Nessun risultato per i criteri correnti.</td></tr>'; $('tblFoot').textContent=''; $('tableScroll').style.maxHeight=''; renderRelated([],matcher); return; }
+  const cap = pageSize()==='all' ? rows.length : pageSize();
+  const show=rows.slice(0,cap);
+  tb.innerHTML=show.map(p=>{
+    const badges=(p.experimental?'<span class="badge exp">EXP</span>':'')+(p.deprecated?'<span class="badge dep">DEPR</span>':'');
+    const tags=p.tags.slice(0,5).map(t=>'<span class="tag">'+esc(t)+'</span>').join('');
+    const sched=schedaUrl(p);
+    const links=[];
+    if(sched) links.push('<a href="'+esc(sched)+'" target="_blank" rel="noopener">scheda ↗</a>');
+    if(p.repo) links.push('<a href="'+esc(p.repo)+'" target="_blank" rel="noopener">repo ↗</a>');
+    else if(p.homepage) links.push('<a href="'+esc(p.homepage)+'" target="_blank" rel="noopener">home ↗</a>');
+    const link=links.length?links.join('<br>'):'—';
+    const iconUrl = p.icon ? (/^https?:/i.test(p.icon) ? p.icon : 'https://plugins.qgis.org'+p.icon) : '';
+    const initial = esc(((p.name||'?').trim().charAt(0)||'?').toUpperCase());
+    const icon = '<span class="picon-box"><span class="picon-ph">'+initial+'</span>'+
+      (iconUrl?'<img class="picon" loading="lazy" alt="" src="'+esc(iconUrl)+'" onerror="this.remove()">':'')+'</span>';
+    const qc = qgisClass(p);
+    const qTitle = 'Intervallo dichiarato: '+(p.qmin||'?')+' – '+(p.qmax||'∞');
+    const qcell = '<span class="vb '+qc.cls+'" title="'+esc(qTitle)+'">'+qc.label+'</span>';
+    return '<tr>'+
+      '<td class="name"><div class="pcell">'+icon+'<div><b>'+highlight(p.name,matcher)+'</b><span class="pver">v'+esc(p.version)+'</span>'+badges+
+        '<span class="desc">'+highlight(p.description.slice(0,160),matcher)+'</span></div></div></td>'+
+      '<td>'+esc(p.author||'—')+(p.it?' <span class="itmark">.it</span>':'')+'</td>'+
+      '<td class="num">'+nf(p.downloads)+'</td>'+
+      '<td class="num">'+(p.votes?p.vote.toFixed(1).replace('.',','):'—')+'</td>'+
+      '<td>'+(tags||'—')+'</td>'+
+      '<td>'+qcell+'</td>'+
+      '<td class="upd">'+ageCell(p)+'</td>'+
+      '<td>'+link+'</td>'+
+    '</tr>';
+  }).join('');
+  $('tblFoot').textContent = show.length<rows.length
+    ? 'Mostrate '+nf(show.length)+' righe di '+nf(rows.length)+' — affina la ricerca o aumenta «Mostra».'
+    : nf(rows.length)+' risultati';
+
+  renderRelated(rows,matcher);
+
+  // altezza visibile: fino a 10 righe, poi scroll interno sulle righe caricate; 'tutti' espande
+  const scroll=$('tableScroll'), head=$('tbl').tHead;
+  const trs=tb.querySelectorAll('tr');
+  if(pageSize()==='all'){
+    scroll.style.maxHeight='';
+  } else {
+    const vis=Math.min(trs.length,10);
+    if(trs.length<=vis){
+      scroll.style.maxHeight='';
+    } else {
+      let h=head?head.offsetHeight:0;
+      for(let i=0;i<vis;i++) h+=trs[i].offsetHeight;
+      scroll.style.maxHeight=h+'px';
+    }
+  }
+}
+
+/* ---- Plugin correlati per tag (vicini concettuali) ---- */
+let lastRows=[];
+function renderRelated(rows,matcher){
+  const sec=$('relatedSec'), list=$('relatedList');
+  // solo con una ricerca attiva e risultati (non quando si guarda tutto il catalogo)
+  if(!matcher.raw || rows.length===0 || rows.length>400){ sec.style.display='none'; return; }
+  // frequenza dei tag tra i risultati
+  const matchedIds=new Set(rows.map(p=>p.id||p.name));
+  const tagFreq=new Map();
+  rows.forEach(p=>p.tags.forEach(t=>tagFreq.set(t,(tagFreq.get(t)||0)+1)));
+  if(tagFreq.size===0){ sec.style.display='none'; return; }
+  const hotTags=new Set([...tagFreq.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8).map(e=>e[0]));
+  // candidati: plugin non già nei risultati, con tag in comune
+  const scored=[];
+  for(const p of VIEW){
+    if(matchedIds.has(p.id||p.name)) continue;
+    const shared=p.tags.filter(t=>hotTags.has(t));
+    if(shared.length) scored.push({p,shared,score:shared.length});
+  }
+  if(scored.length===0){ sec.style.display='none'; return; }
+  scored.sort((a,b)=> b.score-a.score || b.p.downloads-a.p.downloads);
+  list.innerHTML=scored.slice(0,9).map(({p,shared})=>{
+    const sched=schedaUrl(p);
+    const tags=p.tags.slice(0,6).map(t=>'<span class="tag'+(shared.includes(t)?' hot':'')+'">'+esc(t)+'</span>').join('');
+    const lk=sched?'<a href="'+esc(sched)+'" target="_blank" rel="noopener">scheda ↗</a>':'';
+    return '<div class="rel-card"><div class="rn"><span>'+esc(p.name)+'</span>'+lk+'</div><div class="rt">'+tags+'</div></div>';
+  }).join('');
+  sec.style.display='';
+}
+
+/* ---- Verifica disponibilità nome ---- */
+function checkName(){
+  const out=$('nameResult');
+  const raw=$('nameInput').value.trim();
+  if(!raw){ out.innerHTML=''; return; }
+  if(!ALL.length){ out.innerHTML='<span class="sim">Carica prima il feed.</span>'; return; }
+  const low=raw.toLowerCase();
+  const exact=ALL.find(p=>p.name.toLowerCase().trim()===low);
+  const similar=ALL.filter(p=>{ const n=p.name.toLowerCase(); return n!==low && (n.includes(low)||low.includes(n)); })
+    .sort((a,b)=>b.downloads-a.downloads).slice(0,8);
+  let html='';
+  if(exact){
+    html='<span class="taken">✕ Nome già usato</span> da «'+esc(exact.name)+'»'+(exact.author?' di '+esc(exact.author):'')+'.';
+  } else {
+    html='<span class="ok">✓ Nessuna corrispondenza esatta</span> nel feed corrente.';
+  }
+  if(similar.length){
+    html+='<div style="margin-top:7px"><span class="sim">Nomi simili da controllare:</span> '
+      + similar.map(p=>'<span class="simname">'+esc(p.name)+'</span>').join('')+'</div>';
+  }
+  out.innerHTML=html;
+}
+
+/* ---- Export CSV dei risultati filtrati ---- */
+function exportCsv(){
+  if(!lastRows.length) return;
+  const cols=['name','author','version','downloads','average_vote','rating_votes','tags',
+    'qgis_min','qgis_max','experimental','deprecated','created','updated','scheda','homepage','repository'];
+  const q=s=>{ s=(s==null?'':''+s); return /[",\n;]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const lines=[cols.join(',')];
+  lastRows.forEach(p=>{
+    lines.push([p.name,p.author,p.version,p.downloads,p.vote,p.votes,p.tags.join('|'),
+      p.qmin,p.qmax,p.experimental,p.deprecated,fmtDate(p.created),fmtDate(p.updated),
+      schedaUrl(p),p.homepage,p.repo].map(q).join(','));
+  });
+  const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='qgis-plugin-search.csv';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+
+/* indicatori di ordinamento nelle intestazioni */
+function refreshSortArrows(){
+  document.querySelectorAll('thead th[data-sort] .arr').forEach(s=>s.textContent='');
+  const th=document.querySelector('thead th[data-sort="'+sortKey+'"] .arr');
+  if(th) th.textContent= sortDir<0?'▼':'▲';
+}
+document.querySelectorAll('thead th[data-sort]').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const k=th.dataset.sort;
+    if(sortKey===k) sortDir*=-1; else { sortKey=k; sortDir=(k==='name'||k==='author'||k==='qmin')?1:-1; }
+    refreshSortArrows(); render();
+  });
+});
+
+/* listener ricerca */
+let deb;
+function onSearch(){ clearTimeout(deb); deb=setTimeout(render,120); }
+$('q').addEventListener('input',onSearch);
+$('clearBtn').addEventListener('click',()=>{ $('q').value=''; render(); $('q').focus(); });
+document.querySelectorAll('.scope,#regexFlag,#hideExp,#hideDep,#onlyMaintained').forEach(c=>c.addEventListener('change',render));
+$('verMode').addEventListener('change',()=>{ if(ALL.length){ computeStats(); render(); } });
+$('onlyIt').addEventListener('change',()=>{ if(ALL.length){ computeStats(); render(); } });
+let debName;
+$('nameInput').addEventListener('input',()=>{ clearTimeout(debName); debName=setTimeout(checkName,150); });
+$('btnCsv').addEventListener('click',exportCsv);
+function pageSize(){ const v=$('pageSize').value; return v==='all'?'all':parseInt(v,10); }
+$('pageSize').addEventListener('change',render);
+function setYearMode(mode){
+  yearMode=mode;
+  $('segCreated').classList.toggle('on',mode==='created');
+  $('segUpdated').classList.toggle('on',mode==='updated');
+  if(VIEW.length||ALL.length) drawYears();
+}
+$('segCreated').addEventListener('click',()=>setYearMode('created'));
+$('segUpdated').addEventListener('click',()=>setYearMode('updated'));
+
+/* Drag & drop di uno o più file XML in qualunque punto della pagina */
+['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault(); document.body.style.outline='3px dashed var(--green)'; document.body.style.outlineOffset='-6px';}));
+['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault(); document.body.style.outline='';}));
+document.addEventListener('drop',e=>{ if(e.dataTransfer.files && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files); });
+
+/* init */
+syncCurl(); refreshSortArrows();
+</script>
+</body>
+</html>
