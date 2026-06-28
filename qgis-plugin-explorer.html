@@ -270,6 +270,7 @@
     </div>
     <div class="cmd" style="margin-top:6px">
       <code id="curlCmd4">curl -s "https://plugins.qgis.org/plugins/plugins.xml?qgis=4.0" -o plugins-4.xml</code>
+      <button class="btn" id="copyCurl4">Copia</button>
     </div>
   </div>
 </div>
@@ -304,6 +305,7 @@
       <div class="nc-row">
         <span class="nc-label">Il nome è libero?</span>
         <input type="text" id="nameInput" placeholder="nome del plugin che vuoi creare…" autocomplete="off">
+        <button class="btn primary" id="clearName" title="Pulisci">Pulisci</button>
       </div>
       <div class="nc-result" id="nameResult"></div>
     </div>
@@ -457,11 +459,15 @@ function resetData(){
 $('btnFile').addEventListener('click', ()=>$('fileInput').click());
 $('fileInput').addEventListener('change', e=>{ if(e.target.files.length) loadFiles(e.target.files); e.target.value=''; });
 $('btnReset').addEventListener('click', resetData);
-$('copyCurl').addEventListener('click',()=>{
-  navigator.clipboard.writeText($('curlCmd').textContent).then(()=>{
-    $('copyCurl').textContent='Copiato'; setTimeout(()=>$('copyCurl').textContent='Copia',1400);
+function wireCopy(btnId, codeId){
+  $(btnId).addEventListener('click',()=>{
+    navigator.clipboard.writeText($(codeId).textContent).then(()=>{
+      $(btnId).textContent='Copiato'; setTimeout(()=>$(btnId).textContent='Copia',1400);
+    });
   });
-});
+}
+wireCopy('copyCurl','curlCmd');
+wireCopy('copyCurl4','curlCmd4');
 
 /* ============================================================
    Parsing XML del feed plugins.xml
@@ -975,6 +981,7 @@ $('verMode').addEventListener('change',()=>{ if(ALL.length){ computeStats(); ren
 $('onlyIt').addEventListener('change',()=>{ if(ALL.length){ computeStats(); render(); } });
 let debName;
 $('nameInput').addEventListener('input',()=>{ clearTimeout(debName); debName=setTimeout(checkName,150); });
+$('clearName').addEventListener('click',()=>{ $('nameInput').value=''; $('nameResult').innerHTML=''; $('nameInput').focus(); });
 $('btnCsv').addEventListener('click',exportCsv);
 function pageSize(){ const v=$('pageSize').value; return v==='all'?'all':parseInt(v,10); }
 $('pageSize').addEventListener('change',render);
