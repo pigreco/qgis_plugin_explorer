@@ -28,7 +28,7 @@
 window.IT_AUTHORS_LIST = [
   // organizzazioni / aziende
   'faunalia','itopen','gis3w','gter','adarte','planetek','seacoop','eagleprojects',
-  'cnr-?igag','igag-?cnr','iia-?cnr',
+  'idrostudi','cnr-?igag','igag-?cnr','iia-?cnr',
   'arpa\\s+(?:umbria|piemonte|lazio|veneto|toscana|sicilia|liguria|emilia)',
   // persone
   'salvatore\\s+fiandaca','alessandro\\s+pasotti','matteo\\s+ghetta','enrico\\s+ferreguti',
@@ -38,7 +38,18 @@ window.IT_AUTHORS_LIST = [
   'antonio\\s+cotroneo','gianluca\\s+massei','gianmarco\\s+alberti','stefano\\s+costa',
   'roberta\\s+fagandini','roberto\\s+marzocchi','marco\\s+zanieri','stefano\\s+masera',
   'pierluigi\\s+de\\s+rosa','andrea\\s+fredduzzi','sarino\\s+alfonso\\s+grande',
-  'alejandra\\s+duque\\s+ropero',
+  'alejandra\\s+duque\\s+ropero','fabio\\s+saccon','luca\\s+congedo',
+  'alberto\\s+de\\s+luca','aldo\\s+sardelli','aldo\\s+scorza','alessandro\\s+cristofori',
+  'alessio\\s+corsini','andrea\\s+folini','davide\\s+di\\s+mauro','eleonora\\s+battaglia',
+  'emanuele\\s+gigante','emanuele\\s+gissi','faustino\\s+cetraro','federico\\s+falasca',
+  'francesco\\s+pennica','luca\\s+casti','giacomo\\s+titti','gianluca\\s+cantoro',
+  'gianluca\\s+rossi','giovanni\\s+montini','giuseppe\\s+cosentino','luca\\s+delucchi',
+  'luca\\s+mandolesi','ludovico\\s+frate','luigi\\s+dal\\s+bosco','luigi\\s+lombardo',
+  'marco\\s+braida','marco\\s+stefano\\s+la\\s+sala','massimo\\s+endrighi','matteo\\s+bellia',
+  'maurizio\\s+begani','maurizio\\s+moscati','michele\\s+lissoni','mirco\\s+cazzaro',
+  'riccardo\\s+la\\s+grassa','roberto\\s+pilleri','rossella\\s+ambrosino','ruggero\\s+poletto',
+  'salvatore\\s+agosta','salvatore\\s+larosa','sandro\\s+santilli','simone\\s+maffei',
+  'stefano\\s+gregori','tot[oò]\\s+fiandaca',
   // handle / username noti
-  'totofiandaca','pigreco','gbvitrano'
+  'totofiandaca','pigreco','gbvitrano','geodrinx'
 ];
