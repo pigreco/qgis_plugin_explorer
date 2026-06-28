@@ -38,6 +38,7 @@ window.IT_AUTHORS_LIST = [
   'antonio\\s+cotroneo','gianluca\\s+massei','gianmarco\\s+alberti','stefano\\s+costa',
   'roberta\\s+fagandini','roberto\\s+marzocchi','marco\\s+zanieri','stefano\\s+masera',
   'pierluigi\\s+de\\s+rosa','andrea\\s+fredduzzi','sarino\\s+alfonso\\s+grande',
+  'alejandra\\s+duque\\s+ropero',
   // handle / username noti
-  'totofiandaca','pigreco'
+  'totofiandaca','pigreco','gbvitrano'
 ];
