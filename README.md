@@ -35,14 +35,26 @@ I feed di esempio per lo sviluppo stanno in `feed/`, **ignorata da git** (sono d
 - **Controllo nome libero** — verifica se un nome plugin è già usato (match esatto e simili).
 - **Ricerca** su nome/descrizione/about/tag/autore, con regex opzionale ed evidenziazione.
 - **Filtri** per versione QGIS (compatibilità), sperimentali, deprecati, solo mantenuti.
-- **Filtro "solo autori .it"** — euristica: dominio `.it` negli URL **oppure** autore/organizzazione presente in una allowlist curata della community QGIS italiana. La lista è nel file editabile a mano [`it-authors.js`](it-authors.js): vedi i commenti nel file per come aggiornarla (e quali "falsi amici", es. `CNR`/`CNRS` francesi, NON inserire).
+- **Filtro "solo autori .it"** — euristica: dominio `.it` negli URL **oppure** autore/organizzazione presente in una allowlist curata della community QGIS italiana. La lista è nel file editabile a mano [`it-authors.js`](it-authors.js): vedi i commenti nel file per come aggiornarla (e quali "falsi amici", es. `CNR`/`CNRS` francesi, NON inserire). Per individuare nuovi nomi da aggiungere puoi usare lo script [`extract-authors.py`](extract-authors.py) (vedi sotto).
 - **Statistiche** — KPI e grafici (download, autori, tag, target di versione, crescita).
 - **Esporta CSV** delle righe filtrate.
+
+## Estrarre gli autori dai feed
+
+Lo script [`extract-authors.py`](extract-authors.py) (solo libreria standard di Python 3) legge i feed `feed/plugins-*.xml` ed elenca gli autori **univoci**, con dedup case-insensitive — utile per scovare nuovi nomi italiani da aggiungere a [`it-authors.js`](it-authors.js).
+
+```bash
+python3 extract-authors.py             # solo author_name (default)
+python3 extract-authors.py --uploaders # include anche uploaded_by
+python3 extract-authors.py --counts    # n. plugin per autore (TSV)
+python3 extract-authors.py > feed/autori.txt   # salva l'elenco
+```
 
 ## Struttura
 
 - [`qgis-plugin-explorer.html`](qgis-plugin-explorer.html) — l'app: HTML, CSS inline, JS inline.
 - [`it-authors.js`](it-authors.js) — allowlist autori/organizzazioni italiane, editabile a mano.
+- [`extract-authors.py`](extract-authors.py) — estrae gli autori univoci dai feed (helper per l'allowlist).
 - `feed/` — feed XML di esempio (ignorata da git).
 
 ## Licenza
