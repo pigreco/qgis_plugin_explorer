@@ -7,7 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+  integrity="sha512-CQBWl4fJHWbryGE+Pc7UAxWMUMNMWzWxF4SQo9CgkJIN1kx6djDQZjh3Y8SZ1d+6I+1zze6Z7kHXO7q3UyZAWw=="
+  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
   :root{
     --bg:#F6F8F3; --surface:#FFFFFF; --surface-2:#EEF2E9;
@@ -45,7 +47,7 @@
   .source{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
   .source .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 22px}
   .source label.fld{font-size:12px;color:var(--ink-soft);font-weight:600;display:flex;align-items:center;gap:6px}
-  select,.btn,input[type=text]{font-family:var(--font-body);font-size:14px}
+  select,.btn,input[type=text],input[type=search]{font-family:var(--font-body);font-size:14px}
   select{padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink)}
   .btn{cursor:pointer;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);
     padding:7px 13px;border-radius:8px;font-weight:600;transition:background .15s,border-color .15s}
@@ -77,9 +79,9 @@
   .search-panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;
     box-shadow:var(--shadow);padding:20px 20px 18px}
   .search-row{display:flex;gap:10px;align-items:stretch}
-  .search-row input[type=text]{flex:1;padding:13px 15px;border:1.5px solid var(--line);border-radius:11px;
+  .search-row input[type=text],.search-row input[type=search]{flex:1;padding:13px 15px;border:1.5px solid var(--line);border-radius:11px;
     font-size:16px;background:var(--bg)}
-  .search-row input[type=text]:focus{border-color:var(--green);background:#fff}
+  .search-row input[type=text]:focus,.search-row input[type=search]:focus{border-color:var(--green);background:#fff}
   .opts{display:flex;flex-wrap:wrap;gap:16px 20px;margin-top:13px;align-items:center}
   .chk{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-soft);cursor:pointer;user-select:none}
   .chk input{accent-color:var(--green);width:15px;height:15px}
@@ -282,7 +284,7 @@
     <h2 class="sec">Esiste già un plugin che fa questo?</h2>
     <div class="search-panel">
       <div class="search-row">
-        <input type="text" id="q" placeholder="es. sort features, contour, isoipse, geocoding…" autocomplete="off">
+        <input type="search" id="q" placeholder="es. sort features, contour, isoipse, geocoding…" autocomplete="off">
         <button class="btn primary" id="clearBtn" title="Pulisci">Pulisci</button>
       </div>
       <div class="opts">
@@ -318,6 +320,8 @@
         <select id="pageSize">
           <option value="5">5</option>
           <option value="10" selected>10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
           <option value="100">100</option>
           <option value="all">tutti</option>
         </select>
@@ -329,13 +333,13 @@
       <table id="tbl">
         <thead>
           <tr>
-            <th data-sort="name">Nome <span class="arr"></span></th>
-            <th data-sort="author" class="">Autore</th>
-            <th data-sort="downloads" class="num-h">Download <span class="arr"></span></th>
-            <th data-sort="vote" class="num-h">Voto <span class="arr"></span></th>
+            <th data-sort="name" tabindex="0" aria-sort="none" title="Ordina per nome">Nome <span class="arr"></span></th>
+            <th data-sort="author" tabindex="0" aria-sort="none" title="Ordina per autore">Autore <span class="arr"></span></th>
+            <th data-sort="downloads" tabindex="0" aria-sort="none" class="num-h" title="Ordina per download">Download <span class="arr"></span></th>
+            <th data-sort="vote" tabindex="0" aria-sort="none" class="num-h" title="Ordina per voto">Voto <span class="arr"></span></th>
             <th class="no-sort">Tag</th>
-            <th data-sort="qmin">QGIS <span class="arr"></span></th>
-            <th data-sort="updated">Aggiornato <span class="arr"></span></th>
+            <th data-sort="qmin" tabindex="0" aria-sort="none" title="Ordina per versione minima QGIS">QGIS <span class="arr"></span></th>
+            <th data-sort="updated" tabindex="0" aria-sort="none" title="Ordina per data di aggiornamento">Aggiornato <span class="arr"></span></th>
             <th class="no-sort">Link</th>
           </tr>
         </thead>
@@ -440,12 +444,29 @@ $('verSel').addEventListener('change', ()=>{ syncCurl(); if(ALL.length && $('ver
    Caricamento dati: uno o più file, fusi insieme (CORS impedisce il fetch diretto)
    ============================================================ */
 function loadFiles(fileList){
-  Array.from(fileList).forEach(f=>{
+  const files=Array.from(fileList);
+  let pending=files.length;
+  if(!pending) return;
+  files.forEach(f=>{
     const rd=new FileReader();
-    rd.onload=()=>ingest(rd.result, f.name);
-    rd.onerror=()=>setStatus('errore lettura '+esc(f.name),true);
+    rd.onload=()=>{ ingest(rd.result, f.name); if(--pending===0) finalizeLoad(); };
+    rd.onerror=()=>{ setStatus('errore lettura '+esc(f.name),true); if(--pending===0) finalizeLoad(); };
     rd.readAsText(f);
   });
+}
+/* Eseguito una sola volta a fine batch: dedup/fusione + statistiche + render
+   (evita di ricostruire tutti i grafici una volta per file caricato). */
+function finalizeLoad(){
+  if(!RAW.length) return;                    // tutti i file in errore: lascia il messaggio d'errore
+  ALL=dedupe(RAW);
+  const merged=RAW.length-ALL.length;
+  const filesTxt = FILES.length>1 ? ' da <b>'+FILES.length+'</b> file' : '';
+  setStatus('<b>'+nf(ALL.length)+'</b> plugin unici'+filesTxt
+    +(merged>0?' <span style="color:var(--ink-faint)">('+nf(RAW.length)+' voci, '+nf(merged)+' fuse)</span>':''));
+  $('btnReset').disabled=false;
+  $('dash').classList.remove('muted-screen');
+  computeStats();
+  render();
 }
 function resetData(){
   RAW=[]; FILES=[]; ALL=[]; VIEW=[];
@@ -475,10 +496,11 @@ wireCopy('copyCurl4','curlCmd4');
 function txt(node,tag){ const el=node.getElementsByTagName(tag)[0]; return el?el.textContent.trim():''; }
 function parseDate(s){ const d=new Date(s); return isNaN(d)?null:d; }
 
+/* Parsa un singolo feed e accumula le voci in RAW (nessun dedupe/render qui:
+   ci pensa finalizeLoad a fine batch). DOMParser non lancia: l'errore reale è
+   un nodo <parsererror> nel documento risultante. */
 function ingest(xmlString, fileName){
-  let doc;
-  try{ doc=new DOMParser().parseFromString(xmlString,'application/xml'); }
-  catch(e){ setStatus('XML non valido in '+esc(fileName),true); return; }
+  const doc=new DOMParser().parseFromString(xmlString,'application/xml');
   if(doc.getElementsByTagName('parsererror').length){ setStatus('XML non valido / non è un feed plugins: '+esc(fileName),true); return; }
 
   const nodes=doc.getElementsByTagName('pyqgis_plugin');
@@ -488,13 +510,15 @@ function ingest(xmlString, fileName){
     const created=parseDate(txt(n,'create_date'));
     const updated=parseDate(txt(n,'update_date'));
     const tagsRaw=txt(n,'tags');
+    const name=n.getAttribute('name')||txt(n,'name');
+    const description=txt(n,'description');
+    const about=txt(n,'about');
+    const author=txt(n,'author_name');
+    const tags=tagsRaw?tagsRaw.split(',').map(t=>t.trim()).filter(Boolean):[];
     return {
       id:n.getAttribute('plugin_id')||'',
-      name:n.getAttribute('name')||txt(n,'name'),
-      version:n.getAttribute('version')||txt(n,'version'),
-      description:txt(n,'description'),
-      about:txt(n,'about'),
-      author:txt(n,'author_name'),
+      name, version:n.getAttribute('version')||txt(n,'version'),
+      description, about, author,
       homepage:txt(n,'homepage'),
       icon:txt(n,'icon'),
       it: ITRE.test(txt(n,'homepage')+' '+txt(n,'repository')+' '+txt(n,'tracker'))
@@ -509,23 +533,17 @@ function ingest(xmlString, fileName){
       downloads:parseInt(txt(n,'downloads'),10)||0,
       vote:parseFloat(txt(n,'average_vote'))||0,
       votes:parseInt(txt(n,'rating_votes'),10)||0,
-      tags:tagsRaw?tagsRaw.split(',').map(t=>t.trim()).filter(Boolean):[],
+      tags,
       created, updated,
+      // campi minuscoli precalcolati: la ricerca non li ricostruisce a ogni keystroke
+      _name:name.toLowerCase(), _author:author.toLowerCase(),
+      _description:description.toLowerCase(), _about:about.toLowerCase(),
+      _tags:tags.join(' ').toLowerCase(),
     };
   });
 
   RAW=RAW.concat(entries);
   FILES.push({name:fileName, count:entries.length});
-  ALL=dedupe(RAW);
-
-  const merged=RAW.length-ALL.length;
-  const filesTxt = FILES.length>1 ? ' da <b>'+FILES.length+'</b> file' : '';
-  setStatus('<b>'+nf(ALL.length)+'</b> plugin unici'+filesTxt
-    +(merged>0?' <span style="color:var(--ink-faint)">('+nf(RAW.length)+' voci, '+nf(merged)+' fuse)</span>':''));
-  $('btnReset').disabled=false;
-  $('dash').classList.remove('muted-screen');
-  computeStats();
-  render();
 }
 
 /* Un plugin può comparire più volte nel feed (versione stabile + sperimentale):
@@ -625,14 +643,29 @@ function computeStats(){
   $('kDepF').textContent=tot?((dep/tot*100).toFixed(1).replace('.',','))+'% del totale':'';
 
   drawTags(); drawVersions(); drawYears(); drawAuthors(); drawTopDownloads(); drawDeprecated();
+  noteChartsUnavailable();
 }
 
 const GREEN='#589632', TEAL='#2E5E4E', DEEP='#2E6B3E', AMBER='#C8851A', RED='#B23A2E';
 const trunc=(s,n)=>(s&&s.length>n)?s.slice(0,n-1)+'…':(s||'');
 const gridCfg={grid:{color:'#E8EDE2'},ticks:{color:'#4A5A50',font:{family:'Inter',size:11}}};
+const HAS_CHART = typeof Chart !== 'undefined';   // CDN bloccata/offline → grafici assenti, il resto funziona
 function mkChart(id,cfg){
+  if(!HAS_CHART) return;
   if(charts[id]) charts[id].destroy();
   charts[id]=new Chart($(id),cfg);
+}
+/* se Chart.js non è disponibile, sostituisci i canvas con un avviso (una volta sola) */
+function noteChartsUnavailable(){
+  if(HAS_CHART) return;
+  document.querySelectorAll('.chart-box').forEach(box=>{
+    if(box.dataset.noted) return;
+    box.dataset.noted='1';
+    box.innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;'
+      +'text-align:center;color:var(--ink-faint);font-size:13px;padding:24px;line-height:1.5">'
+      +'Grafici non disponibili: libreria Chart.js non caricata (sei offline o la CDN è bloccata). '
+      +'Ricerca, controllo duplicati e statistiche numeriche restano pienamente operativi.</div>';
+  });
 }
 
 function topCount(arrFn, n){
@@ -768,7 +801,7 @@ function filtered(){
     if(hideDep&&p.deprecated) return false;
     if(onlyMaint){ const yy=yearsSince(p.updated); if(yy==null||yy>2) return false; }
     if(!m.raw) return true;
-    const hay=sc.map(k=> k==='tags' ? p.tags.join(' ') : (p[k]||'')).join('  ');
+    const hay=sc.map(k=> p['_'+k]||'').join('  ');   // campi già minuscoli (precalcolati in ingest)
     return m.test(hay);
   });
   rows.sort((a,b)=>{
@@ -920,9 +953,11 @@ function checkName(){
   const raw=$('nameInput').value.trim();
   if(!raw){ out.innerHTML=''; return; }
   if(!ALL.length){ out.innerHTML='<span class="sim">Carica prima il feed.</span>'; return; }
+  // NB: cerca su ALL (intero catalogo), non su VIEW: un nome è "occupato" anche se
+  // il plugin omonimo è escluso dal filtro versione o dal filtro "solo autori .it".
   const low=raw.toLowerCase();
-  const exact=ALL.find(p=>p.name.toLowerCase().trim()===low);
-  const similar=ALL.filter(p=>{ const n=p.name.toLowerCase(); return n!==low && (n.includes(low)||low.includes(n)); })
+  const exact=ALL.find(p=>p._name.trim()===low);
+  const similar=ALL.filter(p=>{ const n=p._name; return n!==low && (n.includes(low)||low.includes(n)); })
     .sort((a,b)=>b.downloads-a.downloads).slice(0,8);
   let html='';
   if(exact){
@@ -959,15 +994,24 @@ function exportCsv(){
 
 /* indicatori di ordinamento nelle intestazioni */
 function refreshSortArrows(){
-  document.querySelectorAll('thead th[data-sort] .arr').forEach(s=>s.textContent='');
-  const th=document.querySelector('thead th[data-sort="'+sortKey+'"] .arr');
-  if(th) th.textContent= sortDir<0?'▼':'▲';
+  document.querySelectorAll('thead th[data-sort]').forEach(th=>{
+    const arr=th.querySelector('.arr'); if(arr) arr.textContent='';
+    th.setAttribute('aria-sort','none');
+  });
+  const th=document.querySelector('thead th[data-sort="'+sortKey+'"]');
+  if(th){
+    const arr=th.querySelector('.arr'); if(arr) arr.textContent= sortDir<0?'▼':'▲';
+    th.setAttribute('aria-sort', sortDir<0?'descending':'ascending');
+  }
+}
+function applySort(k){
+  if(sortKey===k) sortDir*=-1; else { sortKey=k; sortDir=(k==='name'||k==='author'||k==='qmin')?1:-1; }
+  refreshSortArrows(); render();
 }
 document.querySelectorAll('thead th[data-sort]').forEach(th=>{
-  th.addEventListener('click',()=>{
-    const k=th.dataset.sort;
-    if(sortKey===k) sortDir*=-1; else { sortKey=k; sortDir=(k==='name'||k==='author'||k==='qmin')?1:-1; }
-    refreshSortArrows(); render();
+  th.addEventListener('click',()=>applySort(th.dataset.sort));
+  th.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){ e.preventDefault(); applySort(th.dataset.sort); }
   });
 });
 
@@ -994,10 +1038,16 @@ function setYearMode(mode){
 $('segCreated').addEventListener('click',()=>setYearMode('created'));
 $('segUpdated').addEventListener('click',()=>setYearMode('updated'));
 
-/* Drag & drop di uno o più file XML in qualunque punto della pagina */
-['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault(); document.body.style.outline='3px dashed var(--green)'; document.body.style.outlineOffset='-6px';}));
-['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault(); document.body.style.outline='';}));
-document.addEventListener('drop',e=>{ if(e.dataTransfer.files && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files); });
+/* Drag & drop di uno o più file XML in qualunque punto della pagina.
+   Contatore di profondità: dragleave scatta a ogni confine di elemento figlio,
+   quindi senza contatore l'outline lampeggerebbe mentre trascini sulla pagina. */
+let dragDepth=0;
+const dragOn=()=>{ document.body.style.outline='3px dashed var(--green)'; document.body.style.outlineOffset='-6px'; };
+const dragOff=()=>{ dragDepth=0; document.body.style.outline=''; };
+document.addEventListener('dragenter',e=>{ e.preventDefault(); if(dragDepth++===0) dragOn(); });
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('dragleave',e=>{ e.preventDefault(); if(--dragDepth<=0) dragOff(); });
+document.addEventListener('drop',e=>{ e.preventDefault(); dragOff(); if(e.dataTransfer.files && e.dataTransfer.files.length) loadFiles(e.dataTransfer.files); });
 
 /* init */
 syncCurl(); refreshSortArrows();

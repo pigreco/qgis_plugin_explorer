@@ -55,6 +55,7 @@ python3 extract-authors.py > feed/autori.txt   # salva l'elenco
 - [`qgis-plugin-explorer.html`](qgis-plugin-explorer.html) — l'app: HTML, CSS inline, JS inline.
 - [`it-authors.js`](it-authors.js) — allowlist autori/organizzazioni italiane, editabile a mano.
 - [`extract-authors.py`](extract-authors.py) — estrae gli autori univoci dai feed (helper per l'allowlist).
+- [`CHANGELOG.md`](CHANGELOG.md) — storico delle modifiche.
 - `feed/` — feed XML di esempio (ignorata da git).
 
 ## Licenza
